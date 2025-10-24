@@ -60,42 +60,6 @@ function make_sim_df(init, params, dt, T)
     return df
 end
 
-function make_sim_df_old(init, params, dt, T)
-
-    A,by,b̃θ,uz,nux,Cθ,Γ,ν0 = params
-    # Initialize variables
-    
-    d = length(init)-2
-    x = init[1:d]
-    z,θ = init[d+1],init[d+2]
-
-    cell = 0.0
-    times = 0:dt:T
-
-    # Storage for results
-    results = [vcat(x,[z, θ, cell])]
-    for _ in times
-        x = results[end][1:d]
-        z, θ, cell = results[end][d+1:end]
-        # Compute derivatives
-        z = z + x' *uz *dt + (1 - ν0*log(2)) * dt - log(2) * x'*Cθ * x *dt
-        θ = θ + (ν0  - x' *nux + x'*Cθ*x)*dt  # Update Theta
-        x .= x .+ A*x*dt .+ by *z *dt .+ b̃θ * θ *dt .+ Γ * randn(2) * sqrt(dt)
-
-        # Handle Theta reset
-        if θ ≥ 1
-            θ = 0
-            cell += 1
-            push!(results, vcat(x,[z, 0, cell]))
-        else
-            push!(results, vcat(x,[z, θ, cell]))
-        end
-    end
-    columns = vcat([Symbol(:x, i) for i in 1:d],[:z,:θ,:cell])
-    df = DataFrame(hcat(results...)', columns)
-    df.time = collect(1:length(df.cell))*dt
-    return df
-end 
 
 
 function make_sim_df_ratio_model(init, params, dt, T)

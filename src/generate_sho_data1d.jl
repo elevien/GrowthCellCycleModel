@@ -5,14 +5,14 @@ include("model.jl")
 
 
 dt = 0.01
-T = 9000
+T = 10000
 ν0 = 1/log(2)
 vz = 0.001
 
 # Scan ranges
-ω_range = collect(0.1:0.2:7.0)   # ω₀
+ω_range = collect(0.25:0.25:6.5)   # ω₀
 η_range = [0.5,1.5,4.0]   # diagonal values of A
-nux_range = collect(-1.0:0.1:1.0)  # uₜ
+nux_range = collect(-2.0:0.25:2.0)  # uₜ
 
 # Data containers
 
