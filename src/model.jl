@@ -126,31 +126,18 @@ function transform_directions(uy,nux,by,bθ)
 end
 
 
-function coarse_grained1D(dfcell::DataFrame, l::Int)
-    n = nrow(dfcell)
-
-    Y = dfcell.ϕ[l+1:end]
-    X = zeros(n-l, 2l+1)
-    # standardize the data
-    #Y = (Y .- mean(Y)) ./ std(Y)    
-    # Fill in the X matrix  
-
-    for j in 1:l # each j represents a lag and we are filling in ALL rows for that lag
-        X[:, j] = dfcell.ϕ[l-j+1:end-j]
-        X[:, l + j+1] = dfcell.z0[l-j+1:end-j]
+function fitarl(phi,Y, l::Int)
+    n = length(Y)
+    # Y is 1D array of observations
+    # l is the order of the AR model
+    X = zeros(n - l, l)
+    for i in 1:(n-l)
+        X[i,1:end] = X[i+1:(i + l)]
     end
-    X[:, l+1] = dfcell.z0[l+1:end];
-     # Add intercept column
-    # standardize X 
-    #X = (X .- mean(X, dims=2)) ./ std(X, dims=2)
-    X_aug = hcat(ones(size(X, 1)), X)
-    
-    # Solve normal equations via least squares
-    β = X_aug \ Y  # (X'X)β = X'Y
-    βϕ = β[2:l+1]
-    βz = β[l+2:end]
-    return βϕ,βz, X_aug, Y
-
+    Y_target = phi[l+1:end]
+    # Solve for coefficients using least squares
+    coeffs = X \ Y_target
+    return coeffs
 end
 
 

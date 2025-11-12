@@ -26,36 +26,30 @@ function rho_SHO(η, ω0, μ_λ,n)
     return 0.5 * (1 - exp.(-γ))^2 / (γ - (1 - exp.(-γ))) .* exp(-(n-1) *γ)
 end
 
-# WIP
-function W_theory(η, ω0,ν0,l)
-    # compute What matrix 
-    a = 2*η * ω0
-    M = [0. 0. 1.0 ; 0. 0. 1.0;  0.0 -ω0^2  -a ]
-    What = exp(M/ν0)
-    βϕ = zeros(l)
-    βz = zeros(l+1)
-    βz[1] = What[1,2]
-    for i in 1:l
-        βϕ[i] = What[1,3]*What[3,3]^i
-        βz[i+1] = What[1,3]*What[3,3]^(i-1)*What[3,2]
+
+
+function ksho(t::Real, η::Real, ω0::Real)
+    @assert ω0 > 0 "ω0 must be positive"
+    τ = abs(t)
+    ρ = sqrt(abs(1 - (η)^2))
+
+    # common exponential damping factor
+    damp = exp(-(η * ω0 ) * τ)
+
+    C = if η < 1 - 1e-12                     # underdamped
+        cos(ρ * ω0 * τ) + (η / ρ) * sin(ρ * ω0 * τ)
+    elseif η > 1 + 1e-12                     # overdamped
+        cosh(ρ * ω0 * τ) + (η / ρ) * sinh(ρ * ω0 * τ)
+    else                                     # critically damped (η ≈ 1)
+        2 * (1 + ω0 * τ)
     end
-    return βϕ,βz
+
+    return (1 / ω0^2) * damp * C
 end
 
-function k_SHO(τ, S0, Q, ω0)
-    η = sqrt(abs(1 - 1 / (4Q^2)))  # η is defined differently for different Q ranges
-
-    if 0 < Q && Q < 1/2
-        damping_factor = cosh(η * ω0 * τ) + (1 / (2 * η * Q)) * sinh(η * ω0 * τ)
-    elseif Q == 1/2
-        damping_factor = 2 * (1 + ω0 * τ)
-    elseif Q > 1/2
-        damping_factor = cos(η * ω0 * τ) + (1 / (2 * η * Q)) * sin(η * ω0 * τ)
-    else
-        error("Q must be positive.")
-    end
-
-    return S0 * ω0 * Q * exp(-ω0 * τ / (2Q)) * damping_factor
+# Broadcast over arrays of t
+function ksho(t::AbstractArray, η::Real, ω0::Real)
+    return ksho.(t, η, ω0)
 end
 
 function psd_SHO(ω, S0, Q, ω0)
