@@ -7,18 +7,18 @@ include("model.jl")
 # Data containers
 
 dt = 0.01
-T = 10000
+T = 4000
 init = [0.0, 0.0, 0.0, 0.0]
 vz = 0.001
 ν0 = 1/log(2)
 
 
 
-q_range = collect(0.0:0.05:1.0)
-ω_range = collect(0.01:0.5:10.0)
-η_range = collect(0.1:1.:10.0)  
-c = 0.
-#dfs = []
+q_range = collect(0.0:0.1:1.0)
+ω_range = collect(0.01:0.3:6.0)
+η_range = [0.1,0.5,1.5,4.0]   # diagonal values of A 
+
+
 dfs_cells = []
 
 
@@ -29,7 +29,7 @@ for η in η_range
             a = om*η
             
             σ = sqrt(vz*a*om^2) # variance of noise in z
-            params = build_model2d(a,a,om,q,σ,c)
+            params = build_model2d(a,a,om,q,σ)
             df = make_sim_df(init, params, dt, T)
 
             df.y = df.z .+ log(2) .* df.θ
@@ -46,7 +46,6 @@ for η in η_range
             df.η .= η
             dfcell_sim.ω0 .= om
             dfcell_sim.η .= η
-            dfcell_sim.c .= c
             dfcell_sim.isphys .=  isphysical(df)
             #push!(dfs,df)
             push!(dfs_cells,dfcell_sim)

@@ -5,6 +5,7 @@ using DataFrames
 function make_sim_df(init, params, dt, T)
     A, by, b̃θ, uz, nux, Cθ, Γ, ν0 = params
 
+    # note that Cθ is a quadratic term which is zero for the paper
     d = length(init) - 2
     x = copy(@view init[1:d])              # current state (mutable)
     z = init[d+1]
@@ -18,7 +19,7 @@ function make_sim_df(init, params, dt, T)
     R = Matrix{Float64}(undef, nsteps, d + 3)  # [x..., z, θ, cell]
 
     # Scratch buffers (reused every step)
-    Cθx = similar(x)                       # holds Cθ * x
+    Cθx = similar(x)                       # holds Cθ * x 
     Ax  = similar(x)                       # holds A  * x
     ξ    = Vector{Float64}(undef, size(Γ, 2))
     Γξ   = similar(x)                      # holds Γ * ξ
@@ -32,7 +33,7 @@ function make_sim_df(init, params, dt, T)
 
         # Update z and θ
         z += (dot(x, uz) + (1 - ν0 * log2) - log2 * q) * dt
-        θ += (ν0 - dot(x, nux) + q) * dt
+        θ += (ν0 + dot(x, nux) + q) * dt
 
         # Update x
         mul!(Ax, A, x)                     # Ax = A * x
@@ -126,62 +127,35 @@ function transform_directions(uy,nux,by,bθ)
 end
 
 
-function fitarl(phi,Y, l::Int)
+function fitarl(Y, l::Int)
     n = length(Y)
     # Y is 1D array of observations
     # l is the order of the AR model
+    
     X = zeros(n - l, l)
     for i in 1:(n-l)
-        X[i,1:end] = X[i+1:(i + l)]
+        X[i, :] = Y[i:l]
     end
-    Y_target = phi[l+1:end]
+    Y_target = Y[(l+1):end]
+    
     # Solve for coefficients using least squares
     coeffs = X \ Y_target
     return coeffs
 end
 
 
-function lagged_covariances(df::DataFrame, L::Int)
-    ϕ = df.ϕ
-    λ = df.λ
-    y0 = df.z0
-    n = length(ϕ)
-    Σ = Matrix{Float64}[]
-
-    for j in 0:L
-        # Align sequences for lag j
-        ϕ_t = ϕ[(j+1):end]
-        ϕ_tmj = ϕ[1:(end-j)]
-        λ_t = λ[(j+1):end]
-        λ_tmj = λ[1:(end-j)]
-        y_t = y0[(j+1):end]
-        y_tmj = y0[1:(end-j)]
-
-        # Compute lagged covariances
-        Σj = [
-            cov(λ_tmj, λ_t)  cov(ϕ_tmj, λ_t) cov(λ_tmj, y_t);
-            cov(λ_tmj, ϕ_t)  cov(ϕ_tmj, ϕ_t) cov(ϕ_tmj, y_t);
-            cov(y_tmj, λ_t)  cov(y_tmj, ϕ_t)  cov(y_tmj, y_t)
-        ]
-        push!(Σ, Σj)
-    end
-
-    return Σ
-end
 
 
-function build_model2d(a1,a2,ω0,q,σ,c)
+
+function build_model2d(a1,a2,ω0,q,σ)
     A = [-a1 0.0; 0.0 -a2]
     Γ = [σ 0.0; 0.0 σ]
     uz = [1.0,-1.0]
-    nux = [c/log(2),1.0/log(2)]
+    nux = [0.0,1.0/log(2)]
     Cθ = zeros(2,2)
-    Cθ[1,2] = c/log(2)^2/2
-    Cθ[2,1] = c/log(2)^2/2
     b̃θ = zeros(2)
     
     by = ω0^2 .* [-q,1-q]
-    #b̃θ = log(2)*by
     ν0 = 1/log(2)
     
     params = (A,by,b̃θ,uz,nux,Cθ,Γ,ν0)
